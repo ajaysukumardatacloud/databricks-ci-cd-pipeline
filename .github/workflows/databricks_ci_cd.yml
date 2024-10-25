@@ -2,9 +2,9 @@ name: CI/CD for Databricks Notebooks
 on:
  push:
    branches:
-     - main  # Adjust as needed
+     - main
 jobs:
- # Job 1: Run Databricks Test Notebook
+ # Step 1: Run Databricks Test Notebook
  run-databricks-tests:
    runs-on: ubuntu-latest
    steps:
@@ -12,26 +12,26 @@ jobs:
        uses: actions/checkout@v3
      - name: Install Databricks CLI
        run: pip install databricks-cli
-     # Configure Databricks CLI with service principal secrets
-     - name: Configure Databricks CLI for Service Principal
+     # Configure Databricks CLI using AAD by setting environment variables
+     - name: Configure Databricks CLI with AAD Environment Variables
        env:
          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-         SP_CLIENT_ID: ${{ secrets.SP_CLIENT_ID }}
-         SP_CLIENT_SECRET: ${{ secrets.SP_CLIENT_SECRET }}
-         TENANT_ID: ${{ secrets.TENANT_ID }}
+         DATABRICKS_AAD_CLIENT_ID: ${{ secrets.SP_CLIENT_ID }}
+         DATABRICKS_AAD_CLIENT_SECRET: ${{ secrets.SP_CLIENT_SECRET }}
+         DATABRICKS_AAD_TENANT_ID: ${{ secrets.TENANT_ID }}
        run: |
-         databricks configure --aad-token --aad-client-id=$SP_CLIENT_ID --aad-client-secret=$SP_CLIENT_SECRET --aad-tenant-id=$TENANT_ID --host=$DATABRICKS_HOST
+         databricks configure --aad-token
      # Run the test notebook on Databricks
      - name: Run Test Notebook on Databricks
        run: |
          databricks runs submit --json '{
            "run_name": "Test Notebook Execution",
-           "existing_cluster_id": "your-cluster-id",  # Replace with your cluster ID
+           "existing_cluster_id": "1001-143040-dmg5lktw",  # Replace with your cluster ID
            "notebook_task": {
              "notebook_path": "/Workspace/CICD/test_transformations"  # Path to your test notebook
            }
          }'
- # Job 2: Deploy Notebook to Production
+ # Step 2: Deploy Notebook to Production
  deploy-prod:
    needs: run-databricks-tests
    runs-on: ubuntu-latest
@@ -40,16 +40,16 @@ jobs:
        uses: actions/checkout@v3
      - name: Install Databricks CLI
        run: pip install databricks-cli
-     # Configure Databricks CLI for deployment
-     - name: Configure Databricks CLI for Service Principal
+     # Set AAD environment variables for deployment
+     - name: Configure Databricks CLI with AAD for Deployment
        env:
          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-         SP_CLIENT_ID: ${{ secrets.SP_CLIENT_ID }}
-         SP_CLIENT_SECRET: ${{ secrets.SP_CLIENT_SECRET }}
-         TENANT_ID: ${{ secrets.TENANT_ID }}
+         DATABRICKS_AAD_CLIENT_ID: ${{ secrets.SP_CLIENT_ID }}
+         DATABRICKS_AAD_CLIENT_SECRET: ${{ secrets.SP_CLIENT_SECRET }}
+         DATABRICKS_AAD_TENANT_ID: ${{ secrets.TENANT_ID }}
        run: |
-         databricks configure --aad-token --aad-client-id=$SP_CLIENT_ID --aad-client-secret=$SP_CLIENT_SECRET --aad-tenant-id=$TENANT_ID --host=$DATABRICKS_HOST
-     # Deploy the notebook to production workspace
+         databricks configure --aad-token
+    # Deploy the notebook to production workspace
      - name: Deploy Notebook to Production
-       run: |
-         databricks workspace import --overwrite /Workspace/CICD/transformations /Production/Notebooks/transformations
+       # run: |
+       #   databricks workspace import --overwrite /Workspace/CICD/transformations /Production/Notebooks/transformations
